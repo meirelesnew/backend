@@ -62,3 +62,32 @@ exports.saveRankingEntry = async (req, res) => {
     res.status(500).json({ ok: false, message: "Erro interno do servidor" });
   }
 };
+
+exports.getRankingByNivel = async (req, res) => {
+  const db = getDb();
+  if (!db) return res.status(503).json({ ranking: [], total: 0 });
+  const nivel = parseInt(req.params.nivel);
+  if (![1, 2].includes(nivel))
+    return res.status(400).json({ message: "Nível inválido (use 1 ou 2)" });
+  try {
+    const docs = await db.collection("ranking")
+      .find({ nivel, tempo: { $type: ["int", "long", "double", "decimal"] } })
+      .sort({ tempo: 1 }).limit(50).toArray();
+    res.json({ ranking: docs.map(d => ({ ...d, _id: String(d._id), tempo: Number(d.tempo) })), nivel, total: docs.length });
+  } catch (err) {
+    res.status(500).json({ ranking: [], total: 0 });
+  }
+};
+
+exports.getMeuRanking = async (req, res) => {
+  const db = getDb();
+  if (!db) return res.status(503).json({ ranking: [], total: 0 });
+  try {
+    const docs = await db.collection("ranking")
+      .find({ jogador_id: req.usuarioId })
+      .sort({ tempo: 1 }).limit(20).toArray();
+    res.json({ ranking: docs.map(d => ({ ...d, _id: String(d._id) })), total: docs.length });
+  } catch (err) {
+    res.status(500).json({ ranking: [], total: 0 });
+  }
+};
