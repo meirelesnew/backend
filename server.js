@@ -223,6 +223,7 @@ io.on("connection", (socket) => {
 app.use("/api/auth",    require("./routes/auth"));
 app.use("/api/ranking", require("./routes/ranking"));
 app.use("/api/jogador", require("./routes/jogador"));
+app.use("/api/admin",   require("./routes/admin"));
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.all("/api/health", (req, res) => {
