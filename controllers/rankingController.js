@@ -42,7 +42,9 @@ exports.saveRankingEntry = async (req, res) => {
   const db = getDb();
   if (!db) return res.status(503).json({ ok: false, offline: true, message: "Banco de dados indisponível" });
 
-  const { jogador_id, nome, avatar, nivel, tempo, acertos, erros, modo } = req.body;
+  const { nome, avatar, nivel, tempo, acertos, erros, modo } = req.body;
+  const jogador_id = req.usuarioId || req.body.jogador_id || null;
+  
   try {
     await db.collection("ranking").insertOne({
       _id: uuidv4(),
