@@ -1,94 +1,78 @@
 const nodemailer = require("nodemailer");
 
-// Configuração do transporter (Gmail ou SMTP genérico)
+const SITE_URL = process.env.SITE_URL || "https://tabuadaturbo.com.br";
+
 function criarTransporter() {
+  // Suporta Gmail e qualquer SMTP genérico
+  if (process.env.EMAIL_HOST) {
+    // SMTP genérico (Resend, SendGrid, Brevo etc)
+    return nodemailer.createTransporter({
+      host:   process.env.EMAIL_HOST,
+      port:   parseInt(process.env.EMAIL_PORT || "587"),
+      secure: process.env.EMAIL_SECURE === "true",
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    });
+  }
+  // Gmail App Password
   return nodemailer.createTransporter({
     service: "gmail",
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS   // Gmail App Password (não a senha normal)
-    }
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
   });
 }
 
-const SITE_URL    = process.env.SITE_URL    || "https://tabuadaturbo.com.br";
-const EMAIL_FROM  = process.env.EMAIL_FROM  || `"Tabuada Turbo ⚡" <${process.env.EMAIL_USER}>`;
+const EMAIL_FROM = process.env.EMAIL_FROM
+  || (process.env.EMAIL_USER ? `Tabuada Turbo <${process.env.EMAIL_USER}>` : null);
 
-// ── Templates de email ────────────────────────────────────────────────────────
+async function enviar(to, subject, html) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("[EMAIL] Variáveis EMAIL_USER/EMAIL_PASS não configuradas — email não enviado.");
+    console.warn(`[EMAIL] Destinatário: ${to} | Assunto: ${subject}`);
+    return;
+  }
+  const transporter = criarTransporter();
+  await transporter.sendMail({ from: EMAIL_FROM, to, subject, html });
+  console.log(`[EMAIL] Enviado para ${to}: ${subject}`);
+}
 
-function templateBase(titulo, conteudo) {
-  return `
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+function base(titulo, corpo) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <style>
-  body { font-family: Arial, sans-serif; background:#0f0e17; margin:0; padding:20px; }
-  .card { background:#1a1a2e; border-radius:16px; max-width:480px; margin:0 auto; padding:32px; }
-  .logo { text-align:center; font-size:2rem; margin-bottom:8px; }
-  .titulo { color:#ff6b35; text-align:center; font-size:1.4rem; font-weight:bold; margin-bottom:24px; }
-  .texto { color:#ccc; font-size:1rem; line-height:1.6; margin-bottom:20px; }
-  .btn { display:block; background:linear-gradient(135deg,#ff6b35,#ff3366); color:#fff;
-         text-decoration:none; text-align:center; padding:14px 24px; border-radius:10px;
-         font-weight:bold; font-size:1rem; margin:24px 0; }
-  .codigo { background:#0f0e17; border:2px solid #ff6b35; border-radius:8px;
-            text-align:center; font-size:2rem; font-weight:bold; color:#ff6b35;
-            letter-spacing:8px; padding:16px; margin:20px 0; }
-  .rodape { color:#666; font-size:0.8rem; text-align:center; margin-top:24px; }
-  .aviso  { color:#ff3366; font-size:0.85rem; margin-top:12px; }
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="logo">🏎️</div>
-    <div class="titulo">${titulo}</div>
-    ${conteudo}
-    <div class="rodape">Tabuada Turbo — O jogo mais rápido do Brasil!<br>
-    Se não foi você, ignore este email.</div>
-  </div>
-</body>
-</html>`;
+  body{font-family:Arial,sans-serif;background:#0f0e17;margin:0;padding:20px}
+  .card{background:#1a1a2e;border-radius:16px;max-width:480px;margin:0 auto;padding:32px}
+  .logo{text-align:center;font-size:2rem;margin-bottom:4px}
+  h1{color:#ff6b35;text-align:center;font-size:1.3rem;margin:0 0 20px}
+  p{color:#ccc;font-size:.95rem;line-height:1.6}
+  .btn{display:block;background:linear-gradient(135deg,#ff6b35,#ff3366);color:#fff;
+       text-decoration:none;text-align:center;padding:14px;border-radius:10px;
+       font-weight:bold;font-size:1rem;margin:20px 0}
+  .aviso{color:#ff6b35;font-size:.8rem;margin-top:12px}
+  .rodape{color:#555;font-size:.75rem;text-align:center;margin-top:24px}
+</style></head><body><div class="card">
+  <div class="logo">🏎️</div>
+  <h1>${titulo}</h1>
+  ${corpo}
+  <div class="rodape">Tabuada Turbo — Se não foi você, ignore este email.</div>
+</div></body></html>`;
 }
 
-// ── Enviar confirmação de conta ────────────────────────────────────────────────
-async function enviarConfirmacao(email, nome, token) {
-  const link = `${SITE_URL}/confirmar?token=${token}`;
-  const html = templateBase(
+exports.enviarConfirmacao = async (email, nome, token) => {
+  const link = `${SITE_URL}/?confirmar=${token}`;
+  await enviar(email, "Confirme sua conta — Tabuada Turbo", base(
     "Confirme sua conta ✅",
-    `<p class="texto">Olá, <strong style="color:#fff">${nome}</strong>! 🎉<br>
-    Sua conta no Tabuada Turbo foi criada com sucesso.<br>
-    Clique no botão abaixo para confirmar seu e-mail:</p>
-    <a href="${link}" class="btn">✅ Confirmar minha conta</a>
-    <p class="texto">Ou copie e cole este link no navegador:<br>
-    <small style="color:#aaa;word-break:break-all">${link}</small></p>
-    <p class="aviso">⏰ Este link expira em 24 horas.</p>`
-  );
-  await criarTransporter().sendMail({
-    from: EMAIL_FROM, to: email,
-    subject: "✅ Confirme sua conta — Tabuada Turbo",
-    html
-  });
-  console.log(`[EMAIL] Confirmação enviada para ${email}`);
-}
+    `<p>Ola <strong style="color:#fff">${nome}</strong>! Sua conta foi criada.</p>
+     <p>Clique no botao abaixo para confirmar seu e-mail:</p>
+     <a href="${link}" class="btn">Confirmar minha conta</a>
+     <p class="aviso">Link valido por 24 horas.<br>${link}</p>`
+  ));
+};
 
-// ── Enviar recuperação de senha ────────────────────────────────────────────────
-async function enviarRecuperacao(email, nome, token) {
-  const link = `${SITE_URL}/redefinir?token=${token}`;
-  const html = templateBase(
-    "Redefinir senha 🔑",
-    `<p class="texto">Olá, <strong style="color:#fff">${nome}</strong>!<br>
-    Recebemos uma solicitação para redefinir a senha da sua conta.</p>
-    <a href="${link}" class="btn">🔑 Redefinir minha senha</a>
-    <p class="texto">Ou copie e cole este link no navegador:<br>
-    <small style="color:#aaa;word-break:break-all">${link}</small></p>
-    <p class="aviso">⏰ Este link expira em 1 hora.<br>
-    Se não foi você, ignore este email — sua senha não será alterada.</p>`
-  );
-  await criarTransporter().sendMail({
-    from: EMAIL_FROM, to: email,
-    subject: "🔑 Redefinir senha — Tabuada Turbo",
-    html
-  });
-  console.log(`[EMAIL] Recuperação enviada para ${email}`);
-}
-
-module.exports = { enviarConfirmacao, enviarRecuperacao };
+exports.enviarRecuperacao = async (email, nome, token) => {
+  const link = `${SITE_URL}/?redefinir=${token}`;
+  await enviar(email, "Redefinir senha — Tabuada Turbo", base(
+    "Redefinir sua senha",
+    `<p>Ola <strong style="color:#fff">${nome}</strong>!</p>
+     <p>Clique no botao abaixo para criar uma nova senha:</p>
+     <a href="${link}" class="btn">Redefinir minha senha</a>
+     <p class="aviso">Link valido por 1 hora.<br>Se nao foi voce, ignore este email.<br>${link}</p>`
+  ));
+};
