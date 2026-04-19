@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 
+// SITE_URL deve ser o domínio do FRONTEND (GitHub Pages ou Domínio Principal)
 const SITE_URL = process.env.SITE_URL || "https://tabuadaturbo.com.br";
 
 function criarTransporter() {
