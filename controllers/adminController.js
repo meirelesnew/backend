@@ -1,3 +1,4 @@
+const bcrypt = require("bcryptjs");
 const { getDb } = require("../config/db");
 
 exports.listarUsuarios = async (req, res) => {
@@ -61,15 +62,16 @@ exports.atualizarUsuario = async (req, res) => {
   if (!db) return res.status(503).json({ message: "Banco indisponível" });
 
   const { id } = req.params;
-  const { nome, avatar, role, confirmado } = req.body;
+  const { nome, avatar, role, confirmado, senha } = req.body;
 
   try {
     const updates = {};
-  if (nome) updates.nome = nome;
-  if (avatar) updates.avatar = avatar;
-  if (role) updates.role = role;
-  if (typeof confirmado === "boolean") updates.confirmado = confirmado;
-  updates.atualizado_em = new Date();
+    if (nome) updates.nome = nome;
+    if (avatar) updates.avatar = avatar;
+    if (role) updates.role = role;
+    if (typeof confirmado === "boolean") updates.confirmado = confirmado;
+    if (senha) updates.senha = await bcrypt.hash(senha, 10);
+    updates.atualizado_em = new Date();
 
     await db.collection("usuarios").updateOne(
       { _id: id },
