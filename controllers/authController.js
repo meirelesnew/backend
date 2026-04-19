@@ -65,7 +65,7 @@ exports.register = async (req, res) => {
     const existe = await db.collection("usuarios").findOne({ email: email.toLowerCase() });
     if (existe) return res.status(409).json({ message: "E-mail já cadastrado" });
 
-    const tokenConfirmacao = gerarTokenSeguro();
+    // Sem token de confirmação - conta já confirmada automaticamente
     const usuario = {
       _id:               uuidv4(),
       nome,
@@ -74,18 +74,11 @@ exports.register = async (req, res) => {
       avatar:            avatar || "🦁",
       role:              "cliente",
       provider:          "email",
-      confirmado:        false,
-      token_confirmacao: tokenConfirmacao,
-      token_confirmacao_expira: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      confirmado:        true,  // Conta já confirmada!
       criado_em:         new Date(),
       atualizado_em:     new Date()
     };
     await db.collection("usuarios").insertOne(usuario);
-
-    // Enviar email de confirmação (não bloqueia a resposta)
-    enviarConfirmacao(email, nome, tokenConfirmacao).catch(e =>
-      console.warn("[EMAIL] Falha ao enviar confirmação:", e.message)
-    );
 
     console.log(`[AUTH] Registro: ${nome} (${email})`);
     res.status(201).json({
