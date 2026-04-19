@@ -6,7 +6,7 @@ function criarTransporter() {
   // Suporta Gmail e qualquer SMTP genérico
   if (process.env.EMAIL_HOST) {
     // SMTP genérico (Resend, SendGrid, Brevo etc)
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       host:   process.env.EMAIL_HOST,
       port:   parseInt(process.env.EMAIL_PORT || "587"),
       secure: process.env.EMAIL_SECURE === "true",
@@ -14,7 +14,7 @@ function criarTransporter() {
     });
   }
   // Gmail App Password
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: "gmail",
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
   });
