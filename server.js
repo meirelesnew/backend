@@ -224,7 +224,7 @@ app.use("/api/auth",    require("./routes/auth"));
 app.use("/api/ranking", require("./routes/ranking"));
 app.use("/api/jogador", require("./routes/jogador"));
 app.use("/api/admin",   require("./routes/admin"));
-app.use("/api/bootstrap", require("./routes/bootstrap"));
+// app.use("/api/bootstrap", require("./routes/bootstrap")); // Desabilitado após criar admin
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.all("/api/health", (req, res) => {
