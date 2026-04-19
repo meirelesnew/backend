@@ -1,7 +1,7 @@
 {
   "name": "tabuada-turbo-backend",
   "version": "3.1.0",
-  "description": "Backend Tabuada Turbo \u2014 Express + MongoDB + JWT + Google OAuth + Email",
+  "description": "Backend Tabuada Turbo — Express + MongoDB + JWT + Google OAuth + Email",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,11 +13,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
     "google-auth-library": "^9.6.3",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.3.0",
-    "uuid": "^9.0.0",
-    "nodemailer": "^6.9.9"
+    "nodemailer": "^6.9.9",
+    "socket.io": "^4.8.3",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

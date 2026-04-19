@@ -5,6 +5,7 @@ const { v4: uuidv4 }   = require("uuid");
 const crypto           = require("crypto");
 const { getDb }        = require("../config/db");
 const { enviarConfirmacao, enviarRecuperacao } = require("../config/email");
+const { body, validationResult } = require("express-validator");
 
 const JWT_SECRET    = process.env.JWT_SECRET;
 const JWT_EXPIRES   = "7d";
@@ -31,6 +32,19 @@ function gerarTokenSeguro() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validarEntrada(req, res) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  return null;
+}
+
 // ── Registro (email + senha) ──────────────────────────────────────────────────
 
 exports.register = async (req, res) => {
@@ -40,8 +54,12 @@ exports.register = async (req, res) => {
   const { nome, email, senha, avatar } = req.body;
   if (!nome || !email || !senha)
     return res.status(400).json({ message: "nome, email e senha são obrigatórios" });
+  if (typeof nome !== "string" || nome.trim().length < 2)
+    return res.status(400).json({ message: "Nome deve ter pelo menos 2 caracteres" });
   if (senha.length < 6)
     return res.status(400).json({ message: "Senha deve ter no mínimo 6 caracteres" });
+  if (!isValidEmail(email))
+    return res.status(400).json({ message: "E-mail inválido" });
 
   try {
     const existe = await db.collection("usuarios").findOne({ email: email.toLowerCase() });
@@ -156,6 +174,8 @@ exports.login = async (req, res) => {
   const { email, senha } = req.body;
   if (!email || !senha)
     return res.status(400).json({ message: "email e senha são obrigatórios" });
+  if (!isValidEmail(email))
+    return res.status(400).json({ message: "E-mail inválido" });
 
   try {
     const usuario = await db.collection("usuarios").findOne({ email: email.toLowerCase() });
