@@ -15,7 +15,7 @@ const GOOGLE_CLIENT = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function gerarToken(usuario) {
   return jwt.sign(
-    { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar },
+    { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar, role: usuario.role || "cliente" },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES }
   );
@@ -24,7 +24,7 @@ function gerarToken(usuario) {
 function respostaUsuario(res, usuario, status = 200) {
   res.status(status).json({
     token: gerarToken(usuario),
-    usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar }
+    usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar, role: usuario.role || "cliente" }
   });
 }
 
@@ -72,10 +72,11 @@ exports.register = async (req, res) => {
       email:             email.toLowerCase(),
       senha:             await bcrypt.hash(senha, 10),
       avatar:            avatar || "🦁",
+      role:              "cliente",
       provider:          "email",
-      confirmado:        false,                          // ← conta não confirmada ainda
+      confirmado:        false,
       token_confirmacao: tokenConfirmacao,
-      token_confirmacao_expira: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+      token_confirmacao_expira: new Date(Date.now() + 24 * 60 * 60 * 1000),
       criado_em:         new Date(),
       atualizado_em:     new Date()
     };
@@ -89,7 +90,7 @@ exports.register = async (req, res) => {
     console.log(`[AUTH] Registro: ${nome} (${email})`);
     res.status(201).json({
       message: "Conta criada! Verifique seu e-mail para confirmar.",
-      usuario: { id: usuario._id, nome, email: email.toLowerCase(), avatar: usuario.avatar }
+      usuario: { id: usuario._id, nome, email: email.toLowerCase(), avatar: usuario.avatar, role: "cliente" }
     });
   } catch (err) {
     console.error("[AUTH] Erro registro:", err.message);
@@ -197,7 +198,7 @@ exports.login = async (req, res) => {
     res.json({
       token,
       aviso,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar }
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, avatar: usuario.avatar, role: usuario.role || "cliente" }
     });
   } catch (err) {
     console.error("[AUTH] Erro login:", err.message);
@@ -235,10 +236,11 @@ exports.googleAuth = async (req, res) => {
         email:         email.toLowerCase(),
         senha:         null,
         avatar:        "🦁",
+        role:          "cliente",
         googleId,
         googlePicture: picture,
-        provider:      "google",
-        confirmado:    true,        // Google já valida o email
+        provider:     "google",
+        confirmado:   true,
         criado_em:     new Date(),
         atualizado_em: new Date()
       };

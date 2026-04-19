@@ -11,6 +11,7 @@ exports.requireAuth = (req, res, next) => {
     const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
     req.usuarioId = decoded.id;
     req.usuario   = decoded;
+    req.role    = decoded.role || "cliente";
     next();
   } catch {
     res.status(401).json({ message: "Token inválido ou expirado" });
@@ -25,6 +26,7 @@ exports.optionalAuth = (req, res, next) => {
       const decoded = jwt.verify(header.split(" ")[1], JWT_SECRET);
       req.usuarioId = decoded.id;
       req.usuario   = decoded;
+      req.role    = decoded.role || "cliente";
     } catch {}
   }
   next();
