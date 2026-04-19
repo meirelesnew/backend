@@ -1,10 +1,21 @@
 const router = require("express").Router();
-const { register, login, googleAuth, perfil } = require("../controllers/authController");
+const ctrl   = require("../controllers/authController");
 const { requireAuth } = require("../middleware/auth");
 
-router.post("/register", register);       // Criar conta email/senha
-router.post("/login",    login);          // Login email/senha
-router.post("/google",   googleAuth);     // Login via Google
-router.get("/perfil",    requireAuth, perfil); // Perfil (protegido)
+// Registro e confirmação
+router.post("/register",             ctrl.register);
+router.post("/confirmar",            ctrl.confirmarConta);
+router.post("/reenviar-confirmacao", ctrl.reenviarConfirmacao);
+
+// Login
+router.post("/login",   ctrl.login);
+router.post("/google",  ctrl.googleAuth);
+
+// Recuperação de senha
+router.post("/recuperar-senha", ctrl.solicitarRecuperacao);
+router.post("/redefinir-senha", ctrl.redefinirSenha);
+
+// Perfil
+router.get("/perfil", requireAuth, ctrl.perfil);
 
 module.exports = router;
