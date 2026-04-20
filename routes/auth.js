@@ -9,7 +9,6 @@ router.post("/reenviar-confirmacao", ctrl.reenviarConfirmacao);
 
 // Login
 router.post("/login",   ctrl.login);
-router.post("/google",  ctrl.googleAuth);
 
 // Recuperação de senha
 router.post("/recuperar-senha", ctrl.solicitarRecuperacao);
