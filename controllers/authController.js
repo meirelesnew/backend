@@ -1,6 +1,5 @@
 const bcrypt           = require("bcryptjs");
 const jwt              = require("jsonwebtoken");
-const { OAuth2Client } = require("google-auth-library");
 const { v4: uuidv4 }   = require("uuid");
 const crypto           = require("crypto");
 const { getDb }        = require("../config/db");
@@ -9,7 +8,6 @@ const { body, validationResult } = require("express-validator");
 
 const JWT_SECRET    = process.env.JWT_SECRET;
 const JWT_EXPIRES   = "7d";
-const GOOGLE_CLIENT = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -199,44 +197,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// ── Login via Google ──────────────────────────────────────────────────────────
-
-exports.googleAuth = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  const { id_token } = req.body;
-  if (!id_token) return res.status(400).json({ message: "id_token obrigatório" });
-
-  try {
-    const ticket   = await GOOGLE_CLIENT.verifyIdToken({
-      idToken: id_token, audience: process.env.GOOGLE_CLIENT_ID
-    });
-    const payload  = ticket.getPayload();
-    const googleId = payload.sub;
-    const email    = payload.email;
-    const nome     = payload.name;
-    const picture  = payload.picture;
-
-    let usuario = await db.collection("usuarios").findOne({
-      $or: [{ googleId }, { email: email.toLowerCase() }]
-    });
-
-    if (!usuario) {
-      usuario = {
-        _id:           uuidv4(),
-        nome,
-        email:         email.toLowerCase(),
-        senha:         null,
-        avatar:        "🦁",
-        role:          "cliente",
-        googleId,
-        googlePicture: picture,
-        provider:     "google",
-        confirmado:   true,
-        criado_em:     new Date(),
-        atualizado_em: new Date()
-      };
       await db.collection("usuarios").insertOne(usuario);
       console.log(`[AUTH] Novo usuário Google: ${nome} (${email})`);
     } else {

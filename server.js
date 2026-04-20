@@ -239,7 +239,7 @@ app.all("/api/health", (req, res) => {
 });
 
 app.all("/", (req, res) => {
-  res.json({ status: "ok", app: "Tabuada Turbo API v3", auth: ["email", "google"] });
+  res.json({ status: "ok", app: "Tabuada Turbo API v3", auth: ["email"] });
 });
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
@@ -253,7 +253,7 @@ async function startServer() {
     await connectDb();
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Tabuada Turbo API v3.1 — porta ${PORT}`);
-      console.log(`🔐 Auth: email/senha + Google OAuth`);
+      console.log(`🔐 Auth: email/senha`);
       console.log(`⚔️ Socket.io: batalhas em tempo real`);
       console.log(`📋 Rotas: /api/auth, /api/ranking, /api/jogador`);
     });
