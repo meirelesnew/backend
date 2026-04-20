@@ -6,8 +6,8 @@ const { getDb }        = require("../config/db");
 const { enviarConfirmacao, enviarRecuperacao } = require("../config/email");
 const { body, validationResult } = require("express-validator");
 
-const JWT_SECRET    = process.env.JWT_SECRET;
-const JWT_EXPIRES   = "7d";
+const JWT_SECRET  = process.env.JWT_SECRET;
+const JWT_EXPIRES = "7d";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,15 +31,12 @@ function gerarTokenSeguro() {
 }
 
 function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function validarEntrada(req, res) {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
   return null;
 }
 
@@ -63,24 +60,23 @@ exports.register = async (req, res) => {
     const existe = await db.collection("usuarios").findOne({ email: email.toLowerCase() });
     if (existe) return res.status(409).json({ message: "E-mail já cadastrado" });
 
-    // Sem token de confirmação - conta já confirmada automaticamente
     const usuario = {
-      _id:               uuidv4(),
+      _id:          uuidv4(),
       nome,
-      email:             email.toLowerCase(),
-      senha:             await bcrypt.hash(senha, 10),
-      avatar:            avatar || "🦁",
-      role:              "cliente",
-      provider:          "email",
-      confirmado:        true,  // Conta já confirmada!
-      criado_em:         new Date(),
-      atualizado_em:     new Date()
+      email:        email.toLowerCase(),
+      senha:        await bcrypt.hash(senha, 10),
+      avatar:       avatar || "🦁",
+      role:         "cliente",
+      provider:     "email",
+      confirmado:   true,
+      criado_em:    new Date(),
+      atualizado_em: new Date()
     };
     await db.collection("usuarios").insertOne(usuario);
 
     console.log(`[AUTH] Registro: ${nome} (${email})`);
     res.status(201).json({
-      message: "Conta criada! Verifique seu e-mail para confirmar.",
+      message: "Conta criada com sucesso!",
       usuario: { id: usuario._id, nome, email: email.toLowerCase(), avatar: usuario.avatar, role: "cliente" }
     });
   } catch (err) {
@@ -104,12 +100,10 @@ exports.confirmarConta = async (req, res) => {
       token_confirmacao_expira: { $gt: new Date() }
     });
 
-    if (!usuario) {
+    if (!usuario)
       return res.status(400).json({ message: "Token inválido ou expirado. Solicite um novo." });
-    }
-    if (usuario.confirmado) {
+    if (usuario.confirmado)
       return res.status(200).json({ message: "Conta já confirmada. Faça login!" });
-    }
 
     await db.collection("usuarios").updateOne(
       { _id: usuario._id },
@@ -174,7 +168,6 @@ exports.login = async (req, res) => {
     if (!usuario || !(await bcrypt.compare(senha, usuario.senha || "")))
       return res.status(401).json({ message: "E-mail ou senha incorretos" });
 
-    // Avisar se conta não confirmada, mas deixa logar
     const aviso = !usuario.confirmado
       ? "Confirme seu e-mail para uma experiência completa."
       : null;
@@ -197,23 +190,6 @@ exports.login = async (req, res) => {
   }
 };
 
-      await db.collection("usuarios").insertOne(usuario);
-      console.log(`[AUTH] Novo usuário Google: ${nome} (${email})`);
-    } else {
-      await db.collection("usuarios").updateOne(
-        { _id: usuario._id },
-        { $set: { googleId, googlePicture: picture, confirmado: true, atualizado_em: new Date() } }
-      );
-      console.log(`[AUTH] Login Google: ${usuario.nome} (${email})`);
-    }
-
-    respostaUsuario(res, usuario);
-  } catch (err) {
-    console.error("[AUTH] Erro Google:", err.message);
-    res.status(401).json({ message: "Autenticação Google falhou", detalhe: err.message });
-  }
-};
-
 // ── Solicitar recuperação de senha ────────────────────────────────────────────
 
 exports.solicitarRecuperacao = async (req, res) => {
@@ -223,21 +199,18 @@ exports.solicitarRecuperacao = async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "E-mail obrigatório" });
 
-  // Sempre retorna sucesso (não revelar se email existe)
   const MSG = "Se este e-mail estiver cadastrado, você receberá as instruções em breve.";
 
   try {
     const usuario = await db.collection("usuarios").findOne({ email: email.toLowerCase() });
-    if (!usuario || usuario.provider === "google") {
-      return res.json({ message: MSG });
-    }
+    if (!usuario) return res.json({ message: MSG });
 
     const token = gerarTokenSeguro();
     await db.collection("usuarios").updateOne(
       { _id: usuario._id },
       { $set: {
           token_recuperacao:        token,
-          token_recuperacao_expira: new Date(Date.now() + 60 * 60 * 1000) // 1h
+          token_recuperacao_expira: new Date(Date.now() + 60 * 60 * 1000)
         }
       }
     );
@@ -251,7 +224,7 @@ exports.solicitarRecuperacao = async (req, res) => {
   }
 };
 
-// ── Redefinir senha ────────────────────────────────────────────────────────────
+// ── Redefinir senha ───────────────────────────────────────────────────────────
 
 exports.redefinirSenha = async (req, res) => {
   const db = getDb();
