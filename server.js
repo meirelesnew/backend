@@ -31,6 +31,12 @@ const PORT = process.env.PORT || 10000;
 // ─── Middlewares ──────────────────────────────────────────────────────────────
 app.use(compression());
 
+// Desabilitar FedCM (impede o browser de mostrar One Tap automático do Google)
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'identity-credentials-get=()');
+  next();
+});
+
 // Cache para assets estáticos (imagens, CSS, JS)
 app.use((req, res, next) => {
   if (req.url.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff2?)$/)) {
