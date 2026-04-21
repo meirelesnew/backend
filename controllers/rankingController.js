@@ -12,17 +12,20 @@ exports.getGlobalRanking = async (req, res) => {
 
   const pipeline = [
     { $match: match },
+    // Adicionar campo nome normalizado para agrupamento case-insensitive
+    { $addFields: { nome_key: { $toLower: "$nome" } } },
     { $sort: { tempo: 1 } },
+    // Agrupar por nome — assim o mesmo jogador em dispositivos diferentes é unificado
     { $group: {
-      _id: "$jogador_id",
-      nome: { $first: "$nome" },
+      _id: "$nome_key",
+      nome:   { $first: "$nome" },
       avatar: { $first: "$avatar" },
-      nivel: { $first: "$nivel" },
-      tempo: { $min: "$tempo" },
-      acertos: { $first: "$acertos" },
-      erros: { $first: "$erros" },
-      modo: { $first: "$modo" },
-      data: { $first: "$data" }
+      nivel:  { $first: "$nivel" },
+      tempo:  { $min: "$tempo" },
+      acertos:{ $first: "$acertos" },
+      erros:  { $first: "$erros" },
+      modo:   { $first: "$modo" },
+      data:   { $min: "$data" }
     }},
     { $sort: { tempo: 1 } },
     { $limit: parseInt(limite) }
@@ -30,7 +33,7 @@ exports.getGlobalRanking = async (req, res) => {
 
   try {
     const docs = await db.collection("ranking").aggregate(pipeline).toArray();
-    const ranking = docs.map(d => ({ ...d, jogador_id: d._id, _id: d._id }));
+    const ranking = docs.map(d => ({ ...d, jogador_id: d._id }));
     res.json({ ranking, total: ranking.length });
   } catch (error) {
     console.error("Erro ao buscar ranking global:", error);
