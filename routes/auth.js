@@ -1,20 +1,13 @@
-const router = require("express").Router();
-const ctrl   = require("../controllers/authController");
-const { requireAuth } = require("../middleware/auth");
+const express = require("express");
+const router  = express.Router();
+const auth    = require("../controllers/authController");
+const { autenticar } = require("../middleware/auth");
 
-// Registro e confirmação
-router.post("/register",             ctrl.register);
-router.post("/confirmar",            ctrl.confirmarConta);
-router.post("/reenviar-confirmacao", ctrl.reenviarConfirmacao);
-
-// Login
-router.post("/login",   ctrl.login);
-
-// Recuperação de senha
-router.post("/recuperar-senha", ctrl.solicitarRecuperacao);
-router.post("/redefinir-senha", ctrl.redefinirSenha);
-
-// Perfil
-router.get("/perfil", requireAuth, ctrl.perfil);
+router.post("/register",        auth.register);
+router.post("/login",           auth.login);
+router.post("/google",          auth.googleAuth);
+router.post("/recuperar-senha", auth.solicitarRecuperacao);
+router.get ("/perfil",          autenticar, auth.perfil);
+router.put ("/perfil",          autenticar, auth.atualizarPerfil);
 
 module.exports = router;
