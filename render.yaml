@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tabuada-turbo-api
+    name: backend-nept
     runtime: node
     plan: free
     buildCommand: npm install
