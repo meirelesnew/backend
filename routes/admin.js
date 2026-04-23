@@ -1,14 +1,11 @@
-const router = require("express").Router();
-const adminCtrl = require("../controllers/adminController");
-const { requireAdmin } = require("../middleware/auth");
+const express = require("express");
+const router  = express.Router();
+const admin   = require("../controllers/adminController");
+const { autenticarAdmin } = require("../middleware/auth");
 
-//Todas as rotas requerem admin
-router.use(requireAdmin);
-
-router.get("/usuarios", adminCtrl.listarUsuarios);
-router.get("/usuarios/:id", adminCtrl.buscarUsuario);
-router.put("/usuarios/:id", adminCtrl.atualizarUsuario);
-router.delete("/usuarios/:id", adminCtrl.deletarUsuario);
-router.get("/estatisticas", adminCtrl.estatisticas);
+router.get   ("/usuarios",       autenticarAdmin, admin.listarUsuarios);
+router.post  ("/promover",       autenticarAdmin, admin.promoverAdmin);
+router.get   ("/stats",          autenticarAdmin, admin.getStats);
+router.delete("/usuario/:uid",   autenticarAdmin, admin.deletarUsuario);
 
 module.exports = router;
