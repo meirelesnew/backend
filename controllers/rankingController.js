@@ -76,8 +76,8 @@ exports.saveRankingEntry = async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) {
-    console.error('[Ranking] save:', err.message);
-    res.status(500).json({ ok: false, error: 'Erro ao salvar' });
+    console.error('[Ranking] save FULL ERROR:', err);
+    res.status(500).json({ ok: false, error: err.message || 'Erro ao salvar', code: err.code || null });
   }
 };
 
