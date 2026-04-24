@@ -1,7 +1,7 @@
 {
   "name": "tabuada-turbo-backend",
   "version": "4.0.0",
-  "description": "Backend Tabuada Turbo — Express + Firebase Firestore + Firebase Auth + Socket.io",
+  "description": "Backend Tabuada Turbo — Express + Firebase",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
