@@ -1,8 +1,4 @@
-const express  = require("express");
-const router   = express.Router();
-const jogador  = require("../controllers/jogadorController");
-
-router.post("/",    jogador.saveJogador);
-router.get ("/:id", jogador.getJogador);
-
-module.exports = router;
+const r=require("express").Router(),j=require("../controllers/jogadorController");
+r.post("/",j.saveJogador);
+r.get("/:id",j.getJogador);
+module.exports=r;
