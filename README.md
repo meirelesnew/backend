@@ -1,46 +1,44 @@
-# Tabuada Turbo — Backend 🚀
+# Tabuada Turbo — Backend API v4.0
 
-API RESTful para o jogo Tabuada Turbo. Node.js + Express + MongoDB + JWT + Google OAuth.
+API REST — **Express.js + Firebase Firestore + Firebase Auth + Socket.io**
 
-## URLs
-- **Produção:** `https://backend-nept.onrender.com`
-- **Health:** `https://backend-nept.onrender.com/api/health`
+## Stack
+
+| Tecnologia | Uso |
+|---|---|
+| Node.js 20 + Express | Servidor HTTP |
+| Firebase Admin SDK | Autenticacao + Firestore |
+| Firebase Auth | Login email/senha e Google |
+| Firestore | Banco de dados |
+| Socket.io | Batalhas em tempo real |
+| Render.com | Hospedagem |
 
 ## Endpoints
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| GET | `/api/health` | — | Status da API |
-| POST | `/api/auth/register` | — | Criar conta (email/senha) |
-| POST | `/api/auth/login` | — | Login (email/senha) → JWT |
-| POST | `/api/auth/google` | — | Login via Google → JWT |
-| GET | `/api/auth/perfil` | ✅ JWT | Ver perfil do usuário |
-| GET | `/api/ranking/global` | — | Ranking global (público) |
-| GET | `/api/ranking/nivel/:n` | — | Ranking por nível 1 ou 2 |
-| GET | `/api/ranking/meu` | ✅ JWT | Meu histórico pessoal |
-| POST | `/api/ranking/salvar` | Opcional | Salvar resultado de partida |
-| POST | `/api/jogador` | — | Criar/atualizar jogador anônimo |
+| Metodo | Rota | Auth | Descricao |
+|---|---|---|---|
+| POST | /api/auth/register | — | Criar conta |
+| POST | /api/auth/login | — | Login |
+| POST | /api/auth/google | — | Login Google |
+| POST | /api/auth/recuperar-senha | — | Reset senha |
+| GET | /api/auth/perfil | ✅ | Perfil |
+| GET | /api/ranking/global | — | Ranking |
+| POST | /api/ranking/salvar | — | Salvar resultado |
+| POST | /api/jogador | — | Salvar jogador |
+| GET | /api/jogador/:id | — | Buscar jogador |
+| GET | /api/health | — | Status |
 
-## Variáveis de Ambiente (Render)
+## Variaveis de ambiente (Render)
 
 ```
-MONGO_URL        = mongodb+srv://...
-JWT_SECRET       = string_longa_e_secreta
-GOOGLE_CLIENT_ID = 501612922717-qku41fj547b4u7hlk18l95gfet7rar8r.apps.googleusercontent.com
-PORT             = 10000
+FIREBASE_SERVICE_ACCOUNT=base64_do_serviceAccountKey.json
+FIREBASE_API_KEY=sua_api_key
+SITE_URL=https://tabuadaturbo.com.br
+PORT=10000
 ```
 
-## Stack
-- **Runtime:** Node.js 20 (`.node-version`)
-- **Framework:** Express 4
-- **Banco:** MongoDB 6 (driver nativo)
-- **Auth:** bcryptjs + jsonwebtoken + google-auth-library
+## Firestore — Colecoes
 
-## Deploy (automático)
-Push para `main` → Render faz redeploy em ~2 min.
-
-```bash
-npm install   # instalar dependências
-npm start     # node server.js
-npm run dev   # nodemon (desenvolvimento)
-```
+- `usuarios` — perfis dos jogadores
+- `ranking` — resultados das partidas  
+- `jogadores` — progresso e recordes
