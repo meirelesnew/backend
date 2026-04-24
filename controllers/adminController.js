@@ -1,139 +1,32 @@
-const bcrypt = require("bcryptjs");
-const { getDb } = require("../config/firebase");
-
+const { getDb, getAuth } = require("../config/firebase");
 exports.listarUsuarios = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  const { pagina = 1, limite = 20 } = req.query;
-  const skip = (parseInt(pagina) - 1) * parseInt(limite);
-
+  const db=getDb(); if(!db) return res.status(503).json({message:"Banco indisponivel"});
   try {
-    const usuarios = await db.collection("usuarios")
-      .find({}, { projection: { senha: 0, token_confirmacao: 0 } })
-      .sort({ criado_em: -1 })
-      .skip(skip)
-      .limit(parseInt(limite))
-      .toArray();
-
-    const total = await db.collection("usuarios").countDocuments();
-
-    res.json({
-      usuarios,
-      total,
-      pagina: parseInt(pagina),
-      totalPaginas: Math.ceil(total / parseInt(limite))
-    });
-  } catch (err) {
-    console.error("[ADMIN] Erro listar usuários:", err);
-    res.status(500).json({ message: "Erro interno" });
-  }
+    const snap=await db.collection("usuarios").orderBy("criado_em","desc").limit(100).get();
+    res.json({usuarios:snap.docs.map(d=>{const u=d.data();return{id:u.uid,nome:u.nome,email:u.email,avatar:u.avatar,role:u.role||"cliente",provider:u.provider||"email",criado_em:u.criado_em};}),total:snap.size});
+  } catch(e){res.status(500).json({message:"Erro interno"});}
 };
-
-exports.buscarUsuario = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  const { id } = req.params;
-
+exports.promoverAdmin = async (req, res) => {
+  const db=getDb(),fa=getAuth(); if(!db) return res.status(503).json({message:"Banco indisponivel"});
+  const {uid}=req.body; if(!uid) return res.status(400).json({message:"uid obrigatorio"});
   try {
-    const usuario = await db.collection("usuarios").findOne(
-      { _id: id },
-      { projection: { senha: 0, token_confirmacao: 0 } }
-    );
-
-    if (!usuario) return res.status(404).json({ message: "Usuário não encontrado" });
-
-    const jogos = await db.collection("ranking")
-      .find({ jogador_id: id })
-      .sort({ data: -1 })
-      .limit(20)
-      .toArray();
-
-    res.json({ usuario, jogos });
-  } catch (err) {
-    console.error("[ADMIN] Erro buscar usuário:", err);
-    res.status(500).json({ message: "Erro interno" });
-  }
+    await db.collection("usuarios").doc(uid).set({role:"admin",atualizado_em:new Date().toISOString()},{merge:true});
+    await fa.setCustomUserClaims(uid,{role:"admin"});
+    res.json({message:"Usuario promovido a admin"});
+  } catch(e){res.status(500).json({message:"Erro interno"});}
 };
-
-exports.atualizarUsuario = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  const { id } = req.params;
-  const { nome, avatar, role, confirmado, senha } = req.body;
-
+exports.getStats = async (req, res) => {
+  const db=getDb(); if(!db) return res.status(503).json({message:"Banco indisponivel"});
   try {
-    const updates = {};
-    if (nome) updates.nome = nome;
-    if (avatar) updates.avatar = avatar;
-    if (role) updates.role = role;
-    if (typeof confirmado === "boolean") updates.confirmado = confirmado;
-    if (senha) updates.senha = await bcrypt.hash(senha, 10);
-    updates.atualizado_em = new Date();
-
-    await db.collection("usuarios").updateOne(
-      { _id: id },
-      { $set: updates }
-    );
-
-    res.json({ message: "Usuário atualizado" });
-  } catch (err) {
-    console.error("[ADMIN] Erro atualizar usuário:", err);
-    res.status(500).json({ message: "Erro interno" });
-  }
+    const [u,r,j]=await Promise.all([db.collection("usuarios").count().get(),db.collection("ranking").count().get(),db.collection("jogadores").count().get()]);
+    res.json({usuarios:u.data().count,partidas:r.data().count,jogadores:j.data().count,timestamp:new Date().toISOString()});
+  } catch(e){res.status(500).json({message:"Erro interno"});}
 };
-
 exports.deletarUsuario = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  const { id } = req.params;
-
-  if (id === req.usuarioId) {
-    return res.status(400).json({ message: "Não pode excluir sua própria conta" });
-  }
-
+  const db=getDb(),fa=getAuth(); if(!db) return res.status(503).json({message:"Banco indisponivel"});
+  const {uid}=req.params; if(!uid) return res.status(400).json({message:"uid obrigatorio"});
   try {
-    await db.collection("usuarios").deleteOne({ _id: id });
-    res.json({ message: "Usuário excluído" });
-  } catch (err) {
-    console.error("[ADMIN] Erro deletar usuário:", err);
-    res.status(500).json({ message: "Erro interno" });
-  }
-};
-
-exports.estatisticas = async (req, res) => {
-  const db = getDb();
-  if (!db) return res.status(503).json({ message: "Banco indisponível" });
-
-  try {
-    const totalUsuarios = await db.collection("usuarios").countDocuments();
-    const usuariosConfirmados = await db.collection("usuarios").countDocuments({ confirmado: true });
-    const totalJogos = await db.collection("ranking").countDocuments();
-
-    const melhoresNivel1 = await db.collection("ranking")
-      .find({ nivel: 1 })
-      .sort({ tempo: 1 })
-      .limit(5)
-      .toArray();
-
-    const melhoresNivel2 = await db.collection("ranking")
-      .find({ nivel: 2 })
-      .sort({ tempo: 1 })
-      .limit(5)
-      .toArray();
-
-    res.json({
-      totalUsuarios,
-      usuariosConfirmados,
-      totalJogos,
-      melhoresNivel1,
-      melhoresNivel2
-    });
-  } catch (err) {
-    console.error("[ADMIN] Erro estatísticas:", err);
-    res.status(500).json({ message: "Erro interno" });
-  }
+    await Promise.all([db.collection("usuarios").doc(uid).delete(),fa.deleteUser(uid)]);
+    res.json({message:"Usuario deletado"});
+  } catch(e){res.status(500).json({message:"Erro interno"});}
 };
