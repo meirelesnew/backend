@@ -1,5 +1,5 @@
 const bcrypt = require("bcryptjs");
-const { getDb } = require("../config/db");
+const { getDb } = require("../config/firebase");
 
 exports.listarUsuarios = async (req, res) => {
   const db = getDb();

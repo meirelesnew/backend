@@ -1,5 +1,5 @@
 const { v4: uuidv4 } = require("uuid");
-const { getDb } = require("../config/db");
+const { getDb } = require("../config/firebase");
 
 exports.saveJogador = async (req, res) => {
   const db = getDb();

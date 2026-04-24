@@ -2,7 +2,7 @@
 //  rankingController.js — com modo offline
 // ══════════════════════════════════════════
 const { v4: uuidv4 } = require('uuid');
-const { getDb } = require('../config/db');
+const { getDb } = require('../config/firebase');
 
 // Ranking em memória (fallback quando não há MongoDB)
 const memRanking = [];

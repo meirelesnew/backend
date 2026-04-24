@@ -2,7 +2,7 @@ const bcrypt           = require("bcryptjs");
 const jwt              = require("jsonwebtoken");
 const { v4: uuidv4 }   = require("uuid");
 const crypto           = require("crypto");
-const { getDb }        = require("../config/db");
+const { getDb }        = require("../config/firebase");
 const { enviarConfirmacao, enviarRecuperacao } = require("../config/email");
 const { body, validationResult } = require("express-validator");
 
