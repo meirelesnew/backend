@@ -11,7 +11,7 @@ app.use(compression());
 app.use(cors({origin:ORIGENS,methods:["GET","POST","PUT","DELETE","HEAD","OPTIONS"],allowedHeaders:["Content-Type","Authorization"],credentials:true}));
 app.use(express.json());
 app.use("/api/auth",rateLimit({windowMs:15*60*1000,max:20,message:{error:"Muitas tentativas."},standardHeaders:true,legacyHeaders:false}));
-app.use("/api",rateLimit({windowMs:60*1000,max:100,message:{error:"Muitas requisicoes."},standardHeaders:true,legacyHeaders:false}));
+app.use("/api",rateLimit({windowMs:60*1000,max:300,message:{error:"Muitas requisicoes."},standardHeaders:true,legacyHeaders:false}));
 const salas=new Map();
 io.on("connection",(socket)=>{
   let sA=null,jA=null;

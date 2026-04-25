@@ -8,7 +8,7 @@ exports.getGlobalRanking = async (req, res) => {
     const snap=await q.limit(limite*5).get();
     const docs=snap.docs.map(d=>({id:d.id,...d.data()}));
     const mapa=new Map();
-    for(const d of docs){const k=d.jogador_id||d.nome;if(!mapa.has(k)||d.tempo<mapa.get(k).tempo)mapa.set(k,d);}
+    for(const d of docs){const k=(d.jogador_id||d.nome)+"_"+(d.nivel||1);if(!mapa.has(k)||d.tempo<mapa.get(k).tempo)mapa.set(k,d);}
     const ranking=Array.from(mapa.values()).sort((a,b)=>a.tempo-b.tempo).slice(0,limite);
     res.json({ranking,total:ranking.length});
   } catch(e){res.status(500).json({ranking:[],total:0,offline:true});}
