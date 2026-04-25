@@ -1,18 +1,36 @@
-// config/firebase.js
-const { initializeApp, cert, getApps } = require("firebase-admin/app");
+const { initializeApp, cert, getApps, getApp } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 const { getAuth: getAuthAdmin } = require("firebase-admin/auth");
-let _db = null, _auth = null;
+
 async function connectDb() {
-  if (getApps().length > 0) { _db = getFirestore(); _auth = getAuthAdmin(); return _db; }
   try {
-    const sa = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT,"base64").toString("utf8"));
-    initializeApp({ credential: cert(sa) });
-    _db = getFirestore(); _auth = getAuthAdmin();
-    console.log("\u2705 Firebase Admin conectado ao Firestore!");
-    return _db;
-  } catch(e) { console.error("\u274c Erro Firebase:", e.message); throw e; }
+    if (getApps().length === 0) {
+      const sa = JSON.parse(
+        Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, "base64").toString("utf8")
+      );
+      initializeApp({ credential: cert(sa) });
+      console.log("✅ Firebase Admin inicializado!");
+    }
+    // Sempre pegar db e auth do app ativo — não depende de variável local
+    const db   = getFirestore();
+    const auth = getAuthAdmin();
+    console.log("✅ Firebase Admin conectado ao Firestore!");
+    return { db, auth };
+  } catch (e) {
+    console.error("❌ Erro Firebase:", e.message);
+    throw e;
+  }
 }
-function getDb() { return _db; }
-function getAuth() { return _auth; }
+
+// Sem variáveis locais — sempre pega do SDK diretamente
+function getDb() {
+  try { return getFirestore(); }
+  catch { return null; }
+}
+
+function getAuth() {
+  try { return getAuthAdmin(); }
+  catch { return null; }
+}
+
 module.exports = { connectDb, getDb, getAuth };
