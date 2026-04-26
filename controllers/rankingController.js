@@ -9,24 +9,19 @@ exports.getGlobalRanking = async (req, res) => {
   const limite = Math.min(parseInt(req.query.limite || "50"), 100);
 
   try {
-    let snap;
+    // Buscar todos sem filtro de nivel no Firestore
+    // (evita necessidade de índice composto e problema de tipo int vs float)
+    const snap = await db.collection("ranking")
+      .orderBy("tempo", "asc")
+      .limit(500)
+      .get();
 
+    let docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Filtrar por nivel em JavaScript (sem depender de índice composto)
     if (nivel !== 0) {
-      // WHERE antes de orderBy — obrigatório no Firestore
-      snap = await db.collection("ranking")
-        .where("nivel", "==", nivel)
-        .orderBy("tempo", "asc")
-        .limit(limite * 5)
-        .get();
-    } else {
-      // Sem filtro de nível — só ordena
-      snap = await db.collection("ranking")
-        .orderBy("tempo", "asc")
-        .limit(limite * 5)
-        .get();
+      docs = docs.filter(d => Number(d.nivel) === nivel);
     }
-
-    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     // Deduplicar: melhor tempo por jogador+nivel
     const mapa = new Map();
