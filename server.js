@@ -162,50 +162,157 @@ app.get("/api/ranking/nivel/:nivel", async (req, res) => {
 app.use((req,res) => res.status(404).json({ error:`${req.method} ${req.path} não encontrado` }));
 
 // ═══════════════════════ SOCKET.IO ═══════════════════════════
-const salas = new Map();
-io.on("connection", (socket) => {
-  let sala = null, jogador = null;
+// ═══════════════════════════════════════════════════════════════
+//  ESTADO GLOBAL DO SOCKET.IO
+// ═══════════════════════════════════════════════════════════════
+const salas    = new Map(); // sala_codigo → dados da sala
+const sessoes  = new Map(); // socket.id   → { sala, jogador }
+const online   = new Map(); // socket.id   → { nome, avatar, status }
 
+// Broadcast da lista de online para todos
+function broadcastOnline() {
+  const jogadores = [...online.values()];
+  io.emit("online_atualizado", { total: jogadores.length, jogadores });
+}
+
+io.on("connection", (socket) => {
+
+  // ── Presença online ──────────────────────────────────────────
+  socket.on("entrar_online", ({ nome, avatar, status = "menu" }) => {
+    online.set(socket.id, { nome, avatar, status });
+    broadcastOnline();
+    console.log(`[ONLINE] +${nome} | total: ${online.size}`);
+  });
+
+  socket.on("atualizar_status", ({ status }) => {
+    const j = online.get(socket.id);
+    if (j) { j.status = status; broadcastOnline(); }
+  });
+
+  // ── Notificação de novo recorde ──────────────────────────────
+  socket.on("novo_recorde", ({ nome, avatar, nivel, tempo }) => {
+    io.emit("recorde_quebrado", {
+      nome, avatar, nivel, tempo,
+      quando: new Date().toLocaleTimeString("pt-BR")
+    });
+    console.log(`[RECORDE] ${nome} — Nv${nivel} — ${tempo}s`);
+  });
+
+  // ── Batalha ──────────────────────────────────────────────────
   socket.on("criar_sala", ({ jogador_id, nome, avatar, nivel }) => {
     const codigo = Math.random().toString(36).substring(2,7).toUpperCase();
-    salas.set(codigo, { codigo, nivel, status:"esperando", criador:{ id:jogador_id, nome, avatar, socketId:socket.id, tempo:null, acertos:0, erros:0 }, jogadores:[] });
-    sala = codigo; jogador = { id:jogador_id, nome, avatar };
+    const sala   = { codigo, nivel, status:"esperando", criador:{ id:jogador_id, nome, avatar, socketId:socket.id, tempo:null, acertos:0, erros:0 }, jogadores:[] };
+    salas.set(codigo, sala);
+    sessoes.set(socket.id, { sala: codigo, jogador: { id:jogador_id, nome, avatar } });
     socket.join(codigo);
-    socket.emit("sala_criada", { codigo, sala: salas.get(codigo) });
+    socket.emit("sala_criada", { codigo, sala });
+
+    // Atualizar status online para "sala"
+    const j = online.get(socket.id);
+    if (j) { j.status = "sala"; broadcastOnline(); }
     console.log(`[SALA] Criada: ${codigo}`);
   });
 
   socket.on("entrar_sala", ({ codigo, jogador_id, nome, avatar }) => {
-    const s = salas.get(codigo.toUpperCase());
+    const c = codigo.toUpperCase();
+    const s = salas.get(c);
     if (!s) { socket.emit("erro",{ message:"Sala não encontrada" }); return; }
     s.jogadores.push({ id:jogador_id, nome, avatar, socketId:socket.id, tempo:null, acertos:0, erros:0 });
-    sala = codigo.toUpperCase(); jogador = { id:jogador_id, nome, avatar };
-    socket.join(sala);
-    io.to(sala).emit("jogador_entrou", { nome, avatar });
+    sessoes.set(socket.id, { sala: c, jogador: { id:jogador_id, nome, avatar } });
+    socket.join(c);
+    io.to(c).emit("jogador_entrou", { nome, avatar });
     socket.emit("sala_encontrada", { codigo:s.codigo, sala:s });
+
+    const j = online.get(socket.id);
+    if (j) { j.status = "sala"; broadcastOnline(); }
   });
 
   socket.on("iniciar_batalha", () => {
-    const s = sala && salas.get(sala);
+    const sess = sessoes.get(socket.id);
+    if (!sess) return;
+    const s = salas.get(sess.sala);
     if (!s) return;
     s.status = "em_jogo";
-    io.to(sala).emit("batalha_iniciada", { nivel: s.nivel });
+    io.to(sess.sala).emit("batalha_iniciada", { nivel: s.nivel });
+
+    // Atualizar status de todos na sala para "jogando"
+    [...sessoes.entries()]
+      .filter(([,v]) => v.sala === sess.sala)
+      .forEach(([sid]) => {
+        const j = online.get(sid);
+        if (j) j.status = "jogando";
+      });
+    broadcastOnline();
   });
 
   socket.on("finalizar_batalha", ({ tempo, acertos, erros }) => {
-    const s = sala && jogador && salas.get(sala);
+    const sess = sessoes.get(socket.id);
+    if (!sess) return;
+    const { sala, jogador } = sess;
+    const s = salas.get(sala);
     if (!s) return;
-    if (s.criador.id === jogador.id) { s.criador.tempo=tempo; s.criador.acertos=acertos; s.criador.erros=erros; }
-    else { const i=s.jogadores.findIndex(j=>j.id===jogador.id); if(i!==-1){s.jogadores[i].tempo=tempo;s.jogadores[i].acertos=acertos;s.jogadores[i].erros=erros;} }
-    const todos=[s.criador,...s.jogadores].filter(j=>j.tempo!==null);
-    if (todos.length===s.jogadores.length+1) { todos.sort((a,b)=>a.tempo-b.tempo); s.status="finalizada"; io.to(sala).emit("batalha_finalizada",{resultados:todos}); }
-    else io.to(sala).emit("jogador_finalizou",{ nome:jogador.nome, tempo });
+
+    if (s.criador.id === jogador.id) {
+      s.criador.tempo=tempo; s.criador.acertos=acertos; s.criador.erros=erros;
+    } else {
+      const i = s.jogadores.findIndex(j => j.id === jogador.id);
+      if (i !== -1) { s.jogadores[i].tempo=tempo; s.jogadores[i].acertos=acertos; s.jogadores[i].erros=erros; }
+    }
+
+    const todos = [s.criador,...s.jogadores].filter(j => j.tempo !== null);
+    if (todos.length === s.jogadores.length+1) {
+      todos.sort((a,b) => a.tempo-b.tempo);
+      s.status = "finalizada";
+      io.to(sala).emit("batalha_finalizada", { resultados: todos });
+    } else {
+      io.to(sala).emit("jogador_finalizou", { nome:jogador.nome, tempo });
+    }
+  });
+
+  socket.on("sair_sala", () => {
+    const sess = sessoes.get(socket.id);
+    if (!sess) return;
+    const { sala, jogador } = sess;
+    const s = salas.get(sala);
+    if (s) {
+      if (s.criador.id === jogador.id) {
+        s.status = "cancelada";
+        io.to(sala).emit("sala_cancelada");
+        salas.delete(sala);
+      } else {
+        s.jogadores = s.jogadores.filter(j => j.id !== jogador.id);
+        io.to(sala).emit("jogador_saiu", { nome: jogador.nome });
+      }
+    }
+    socket.leave(sala);
+    sessoes.delete(socket.id);
+
+    const j = online.get(socket.id);
+    if (j) { j.status = "menu"; broadcastOnline(); }
   });
 
   socket.on("disconnect", () => {
-    const s = sala && salas.get(sala);
-    if (s && s.status!=="finalizada") io.to(sala).emit("adversario_desconectou");
+    // Limpar sala
+    const sess = sessoes.get(socket.id);
+    if (sess) {
+      const { sala } = sess;
+      const s = salas.get(sala);
+      if (s && s.status !== "finalizada") {
+        io.to(sala).emit("adversario_desconectou");
+        salas.delete(sala);
+      }
+      sessoes.delete(socket.id);
+    }
+    // Limpar online
+    online.delete(socket.id);
+    broadcastOnline();
+    console.log(`[OFFLINE] socket ${socket.id} | online: ${online.size}`);
   });
+});
+
+// Endpoint REST para online count (útil para o frontend acordar o servidor)
+app.get("/api/online", (req, res) => {
+  res.json({ total: online.size, jogadores: [...online.values()] });
 });
 
 // ─── Start ────────────────────────────────────────────────────
